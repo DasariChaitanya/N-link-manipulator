@@ -47,6 +47,42 @@ def plot_arm(theta, length_m, base_se2):
   for idx in range(1, link_pos.shape[0]):
     plt.plot(link_pos[idx-1:idx+1,0], link_pos[idx-1:idx+1,1], '-o', linewidth=5, markersize=10)
 
+def animate_arm(x_traj, draw_ee=False, draw_trace=False):
+  """ Animate the arm as it follows a joint angle trajectory
+  Args:
+    theta_traj: List of (N,1) joint angles
+    draw_ee: If true, plot a trace of the end effector as it moves 
+  Returns:
+    animate object
+  """
+  fig = plt.figure()
+  plt.xlim([-1.2, 1.2])
+  plt.ylim([-1.2, 1.2])
+  plt.axis('off')
+  plt.grid()
+  plt.gca().set_aspect('equal', adjustable='box')
+
+  arm_lines = []
+  for idx in range(0, length_m.shape[0]):
+      arm_lines += plt.plot([0, 0], [0, 0], '-o', linewidth=5, markersize=10)
+
+  def update_arm(i):
+    theta = x_traj[i][:2]
+    link_pos = forward_kinematics(theta, length_m, base_se2)
+    if draw_ee: 
+      plt.scatter(link_pos[-1,0], link_pos[-1,1], s=10, color='k')
+    if draw_trace:
+      colors = plt.cm.tab10(np.linspace(0,1,link_pos.shape[0]))
+      for idx in range(1, link_pos.shape[0]):
+        plt.plot(link_pos[idx-1:idx+1,0], link_pos[idx-1:idx+1,1], linewidth=5, alpha=0.1, color=colors[idx-1])
+    for idx in range(1, link_pos.shape[0]):
+      arm_lines[idx-1].set_data(link_pos[idx-1:idx+1,0], link_pos[idx-1:idx+1,1])
+
+  anim = FuncAnimation(fig, update_arm, frames=len(x_traj), interval=30, blit=False, repeat=False)  
+  plt.show()
+  return anim
+
+
 
 if __name__ == "__main__":
   # Let's try visualizing some arm configurations
@@ -59,4 +95,10 @@ if __name__ == "__main__":
 
     theta = np.random.randn(num_links, 1)
     plot_arm(theta, length_m, base_se2)
-    fig.show()
+    plt.show()
+
+    # Let's animate the arm moving from an initial to a final configuration
+    x_0 = np.array([0., 0., 0., 0.])
+    x_f = np.array([2., 2., 0., 0.])
+    theta_traj = list(np.linspace(x_0, x_f, num=50, endpoint=True))
+    animate_arm(theta_traj, draw_ee=True, draw_trace=True)
