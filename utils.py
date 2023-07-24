@@ -1,4 +1,4 @@
-import numpy as np
+import autograd.numpy as np
 import math
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -7,7 +7,7 @@ from IPython.display import HTML, Image
 rc('animation', html='jshtml')
 
 # Parameters of the arm
-num_links = 2
+num_links = 3
 length_m = 0.5 * np.ones(num_links) 
 mass_kg = 1 * np.ones(num_links) 
 base_se2 = np.array([0., 0., 0.]) # Base of the arm in world frame
@@ -67,7 +67,7 @@ def animate_arm(x_traj, draw_ee=False, draw_trace=False):
       arm_lines += plt.plot([0, 0], [0, 0], '-o', linewidth=5, markersize=10)
 
   def update_arm(i):
-    theta = x_traj[i][:2]
+    theta = x_traj[i][:]
     link_pos = forward_kinematics(theta, length_m, base_se2)
     if draw_ee: 
       plt.scatter(link_pos[-1,0], link_pos[-1,1], s=10, color='k')
@@ -82,6 +82,24 @@ def animate_arm(x_traj, draw_ee=False, draw_trace=False):
   plt.show()
   return anim
 
+def manipulator_dynamics(x, u, dt=0.1):
+  """ Compute the dynamics of a manipulator
+  Args:
+    x: (2N,1) array of arm state (joint angle, joint velocity)
+    u: (N,1) array of joint torques
+    dt: discrete time interval
+  Returns:
+    The next state   
+  """
+  m = mass_kg[0]
+  l = length_m[0]
+  M = m*l*l*np.array([[3+2*np.cos(x[1]) , 1+np.cos(x[1])],[1+np.cos(x[1]), 1]])
+  C = m*l*l*np.array([[-np.sin(x[1])*(2*x[2]*x[3] + x[3]**2)],[np.sin(x[1])*(x[2]**2)]])
+  theta_ddt = - np.linalg.inv(M) @ (C-u[:,None])
+  A = np.array([[1,0,dt,0],[0,1,0,dt],[0,0,1,0],[0,0,0,1]])
+  B = np.array([[(dt**2 )/ 2,0],[0, (dt**2) / 2],[dt, 0],[0, dt]])
+  x_new = A @ x[:,None] + B @ theta_ddt
+  return x_new[:,0]
 
 
 if __name__ == "__main__":
@@ -99,6 +117,6 @@ if __name__ == "__main__":
 
     # Let's animate the arm moving from an initial to a final configuration
     x_0 = np.array([0., 0., 0., 0.])
-    x_f = np.array([2., 2., 0., 0.])
+    x_f = np.array([2., 2., 2., 0.])
     theta_traj = list(np.linspace(x_0, x_f, num=50, endpoint=True))
     animate_arm(theta_traj, draw_ee=True, draw_trace=True)
