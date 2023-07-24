@@ -7,10 +7,20 @@ from IPython.display import HTML, Image
 rc('animation', html='jshtml')
 
 # Parameters of the arm
-num_links = 3
+num_links = 2
 length_m = 0.5 * np.ones(num_links) 
 mass_kg = 1 * np.ones(num_links) 
 base_se2 = np.array([0., 0., 0.]) # Base of the arm in world frame
+
+def wrapToPi(x):
+    xwrap = np.remainder(x, 2 * np.pi)
+    mask = np.abs(xwrap) > np.pi
+    xwrap[mask] -= 2 * np.pi * np.sign(xwrap[mask])
+    mask1 = x < 0
+    mask2 = np.remainder(x, np.pi) == 0
+    mask3 = np.remainder(x, 2 * np.pi) != 0
+    xwrap[mask1 & mask2 & mask3] -= 2 * np.pi
+    return xwrap
 
 def forward_kinematics(theta, length_m, base_se2):
   """ Compute the location of each link in the arm given joint angles
@@ -67,7 +77,7 @@ def animate_arm(x_traj, draw_ee=False, draw_trace=False):
       arm_lines += plt.plot([0, 0], [0, 0], '-o', linewidth=5, markersize=10)
 
   def update_arm(i):
-    theta = x_traj[i][:]
+    theta = x_traj[i][:2]
     link_pos = forward_kinematics(theta, length_m, base_se2)
     if draw_ee: 
       plt.scatter(link_pos[-1,0], link_pos[-1,1], s=10, color='k')
